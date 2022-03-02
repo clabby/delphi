@@ -5,7 +5,7 @@ oracles which perform an arbitrary mathematical operation on data from
 [ChainLink](https://chain.link/) Aggregators.
 
 Utilizes a modified version of [Band Protocol's equation evaluation library](https://medium.com/bandprotocol/encoding-and-evaluating-mathematical-expression-in-solidity-f1bb062fa86e)
-that allows for multiple variables to be used **(well, not yet- see TODO)**. 
+that allows for multiple variables to be used.
 
 ## Specification
 * `OracleFactoryV1`
@@ -29,6 +29,6 @@ that allows for multiple variables to be used **(well, not yet- see TODO)**.
 *TODO*
 
 ## TODO
-- [ ] **Add ability to use multiple variables in oracle's equation.**
+- [x] **Add ability to use multiple variables in oracle's equation.**
 - [ ] Design Front-End for easy oracle creation. (See: [Shunting-yard Algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) & [polish notation](https://en.wikipedia.org/wiki/Polish_notation))
 - [ ] Make a subgraph, everybody likes subgraphs.
