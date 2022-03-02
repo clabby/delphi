@@ -30,5 +30,6 @@ that allows for multiple variables to be used.
 
 ## TODO
 - [x] **Add ability to use multiple variables in oracle's equation.**
+- [ ] Scale all LINK aggregator results to 1e18 to keep results uniform / promote ease of use.
 - [ ] Design Front-End for easy oracle creation. (See: [Shunting-yard Algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) & [polish notation](https://en.wikipedia.org/wiki/Polish_notation))
 - [ ] Make a subgraph, everybody likes subgraphs.
