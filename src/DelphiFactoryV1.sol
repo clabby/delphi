@@ -51,7 +51,7 @@ contract DelphiFactoryV1 is Ownable {
      * Create an oracle that performs an arbitrary mathematical operation
      * on one or more ChainLink aggregator feeds.
      *
-     * @param _oracles ChainLink aggregators used in oracle
+     * @param _aggregators ChainLink aggregators used in oracle
      * @param _expressions Equation OPCODEs & values
      */
     function createOracle(
@@ -80,13 +80,14 @@ contract DelphiFactoryV1 is Ownable {
     /**
      * Get all oracles created by this factory, endorsed or non-endorsed
      *
-     * @param Endorsed=true|Non-endorsed=false
+     * @param _isEndorsed Endorsed=true|Non-endorsed=false
      * @return _oracles All endorsed/non-endorsed oracles
      */
     function getOracles(bool _isEndorsed) external view returns (address[] memory _oracles) {
+        uint8 index = 0;
         for (uint i = 0; i < oracles.length; i++) {
             if (endorsed[oracles[i]] == _isEndorsed) {
-                _oracles.push(oracles[i]);
+                _oracles[index++] = oracles[i];
             }
         }
         return _oracles;
@@ -99,7 +100,7 @@ contract DelphiFactoryV1 is Ownable {
     /**
      * Allow/disallow an aggregator for use in new oracles
      *
-     * @param _oracle ChainLink Aggregator to allow/disallow
+     * @param _aggregator ChainLink Aggregator to allow/disallow
      * @param _allow Allowed=true|Disallowed=false
      */
     function setAllowAggregator(address _aggregator, bool _allow) external onlyOwner {

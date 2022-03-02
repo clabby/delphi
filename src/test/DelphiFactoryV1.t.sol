@@ -11,7 +11,7 @@ contract DelphiFactoryV1Test is DSTest {
         address[] memory linkOracles = _getLinkOracles();
 
         // Create Factory
-        factory = new OracleFactoryV1(linkOracles);
+        factory = new DelphiFactoryV1(linkOracles);
         emit log_named_address("Factory", address(factory));
     }
 
