@@ -9,7 +9,7 @@ contract DelphiOracleV1 is Initializable {
 
     address public creator; // Gotta give oracle creators creds <3
     address public factory;
-    AggregatorV3Interface[] public oracles;
+    AggregatorV3Interface[] public aggregators;
     Equation.Node[] public nodes;
 
     constructor () {
@@ -31,7 +31,7 @@ contract DelphiOracleV1 is Initializable {
         creator = msg.sender;
         factory = _factory;
         for (uint i = 0; i < _oracles.length; i++) {
-            oracles.push(AggregatorV3Interface(_oracles[i]));
+            aggregators.push(AggregatorV3Interface(_oracles[i]));
         }
 
         // Set up equation for performOperation
@@ -42,9 +42,12 @@ contract DelphiOracleV1 is Initializable {
      * Performs a special operation with data from available oracles
      */
     function getLatestValue() public view returns (int256) {
-        // TODO Use variable indexes, this is just for testing
-        (,int256 xValue,,,) = oracles[0].latestRoundData();
-        return int256(Equation.calculate(nodes, uint256(xValue)));
+        uint256[] memory variables = new uint256[](aggregators.length);
+        for (uint8 i = 0; i < aggregators.length; i++) {
+            (,int256 value,,,) = aggregators[i].latestRoundData();
+            variables[i] = uint256(value);
+        }
+        return int256(Equation.calculate(nodes, variables));
     }
 
     /**

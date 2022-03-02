@@ -17,21 +17,23 @@ contract DelphiFactoryV1Test is DSTest {
 
     // Test is pinned to block #14305846
     function testCreateOracle() public {
-        uint256[] memory expressions = new uint256[](4);
-        // x*2
-        expressions[0] = 8;
+        uint256[] memory expressions = new uint256[](5);
+        // x+y
+        expressions[0] = 4;
         expressions[1] = 1;
         expressions[2] = 0;
-        expressions[3] = 2;
+        expressions[3] = 1;
+        expressions[4] = 1;
 
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
         DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle(linkOracles, expressions));
 
-        assertEq(oracle.getLatestValue(), 600061253072);
+        assertEq(oracle.getLatestValue(), 4726644626536);
     }
 
+    // Helper function to get link oracles in form of address[] memory
     function _getLinkOracles() private view returns (address[] memory linkOracles) {
         linkOracles = new address[](2);
         linkOracles[0] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // ETH/USD

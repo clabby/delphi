@@ -8,7 +8,6 @@ library Equation {
 
     /// An expression tree is encoded as a set of nodes, with root node having index zero. Each node has 3 values:
     ///  1. opcode: the expression that the node represents. See table below.
-    /// TODO: Update OPCODES
     /// +--------+----------------------------------------+------+------------+
     /// | Opcode |              Description               | i.e. | # children |
     /// +--------+----------------------------------------+------+------------+
@@ -37,6 +36,8 @@ library Equation {
     ///  2. children: the list of node indices of this node's sub-expressions. Different opcode nodes will have different
     ///     number of children.
     ///  3. value: the value inside the node. Currently this is only relevant for Integer Constant (Opcode 00).
+    ///     3.1. MODIFICATION: value is also used for Variable (Opcode 01). Here it designates the index of the
+    ///          variable's value inside of the passed "variables" array.
     /// (*) Arithmetic percentage is computed by multiplying the left-hand side value with the right-hand side,
     ///     and divide the result by 10^18, rounded down to uint256 integer.
     /// (**) Using BancorFormula, the opcode computes log of fractional numbers. However, this fraction's value must
@@ -58,29 +59,27 @@ library Equation {
     enum ExprType { Invalid, Math, Boolean }
 
     uint8 constant OPCODE_CONST = 0;
-    uint8 constant OPCODE_VAR = 1; // TODO Use variable indexes, this is just for testing
-    uint8 constant OPCODE_VAR2 = 2;
-    uint8 constant OPCODE_VAR3 = 3;
-    uint8 constant OPCODE_SQRT = 4;
-    uint8 constant OPCODE_NOT = 5;
-    uint8 constant OPCODE_ADD = 6;
-    uint8 constant OPCODE_SUB = 7;
-    uint8 constant OPCODE_MUL = 8;
-    uint8 constant OPCODE_DIV = 9;
-    uint8 constant OPCODE_EXP = 10;
-    uint8 constant OPCODE_PCT = 11;
-    uint8 constant OPCODE_EQ =  12;
-    uint8 constant OPCODE_NE = 13;
-    uint8 constant OPCODE_LT = 14;
-    uint8 constant OPCODE_GT = 15;
-    uint8 constant OPCODE_LE = 16;
-    uint8 constant OPCODE_GE = 17;
-    uint8 constant OPCODE_AND = 18;
-    uint8 constant OPCODE_OR = 19;
-    uint8 constant OPCODE_IF = 20;
-    uint8 constant OPCODE_BANCOR_LOG = 21;
-    uint8 constant OPCODE_BANCOR_POWER = 22;
-    uint8 constant OPCODE_INVALID = 23;
+    uint8 constant OPCODE_VAR = 1;
+    uint8 constant OPCODE_SQRT = 2;
+    uint8 constant OPCODE_NOT = 3;
+    uint8 constant OPCODE_ADD = 4;
+    uint8 constant OPCODE_SUB = 5;
+    uint8 constant OPCODE_MUL = 6;
+    uint8 constant OPCODE_DIV = 7;
+    uint8 constant OPCODE_EXP = 8;
+    uint8 constant OPCODE_PCT = 9;
+    uint8 constant OPCODE_EQ =  10;
+    uint8 constant OPCODE_NE = 11;
+    uint8 constant OPCODE_LT = 12;
+    uint8 constant OPCODE_GT = 13;
+    uint8 constant OPCODE_LE = 14;
+    uint8 constant OPCODE_GE = 15;
+    uint8 constant OPCODE_AND = 16;
+    uint8 constant OPCODE_OR = 17;
+    uint8 constant OPCODE_IF = 18;
+    uint8 constant OPCODE_BANCOR_LOG = 19;
+    uint8 constant OPCODE_BANCOR_POWER = 20;
+    uint8 constant OPCODE_INVALID = 21;
 
     /// @dev Initialize equation by array of opcodes/values in prefix order. Array
     /// is read as if it is the *pre-order* traversal of the expression tree.
@@ -97,6 +96,8 @@ library Equation {
             /// Get the node's value. Only applicable on Integer Constant case.
             if (opcode == OPCODE_CONST) {
                 node.value = _expressions[++idx];
+            } else if (opcode == OPCODE_VAR) {
+                node.value = _expressions[++idx];
             }
             self.push(node);
         }
@@ -104,16 +105,14 @@ library Equation {
         require(lastNodeIndex == self.length - 1);
     }
 
-    // TODO Use variable indexes, this is just for testing
-
     /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256 xValue) public view returns (uint256) {
-        return solveMath(self, 0, xValue, 0, 0);
+    function calculate(Node[] storage self, uint256[] memory variables) public view returns (uint256) {
+        return solveMath(self, 0, variables);
     }
 
     /// Return the number of children the given opcode node has.
     function getChildrenCount(uint8 opcode) private pure returns (uint8) {
-        if (opcode <= OPCODE_VAR3) {
+        if (opcode <= OPCODE_VAR) {
             return 0;
         } else if (opcode <= OPCODE_NOT) {
             return 1;
@@ -131,7 +130,7 @@ library Equation {
     function checkExprType(uint8 opcode, ExprType[] memory types)
     private pure returns (ExprType)
     {
-        if (opcode <= OPCODE_VAR3) {
+        if (opcode <= OPCODE_VAR) {
             return ExprType.Math;
         } else if (opcode == OPCODE_SQRT) {
             require(types[0] == ExprType.Math);
@@ -199,7 +198,7 @@ library Equation {
     }
 
 
-    function solveMath(Node[] storage self, uint8 nodeIdx, uint256 xValue, uint256 yValue, uint256 zValue)
+    function solveMath(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
     private view returns (uint256)
     {
         Node storage node = self[nodeIdx];
@@ -207,13 +206,9 @@ library Equation {
         if (opcode == OPCODE_CONST) {
             return node.value;
         } else if (opcode == OPCODE_VAR) {
-            return xValue;
-        } else if (opcode == OPCODE_VAR2) {
-            return yValue;
-        } else if (opcode == OPCODE_VAR3) {
-            return zValue;
+            return variables[node.value]; // for variables, set "value" to the index of the variable's value in uint256[] variables
         } else if (opcode == OPCODE_SQRT) {
-            uint256 childValue = solveMath(self, node.child0, xValue, yValue, zValue);
+            uint256 childValue = solveMath(self, node.child0, variables);
             uint256 temp = childValue.add(1).div(2);
             uint256 result = childValue;
             while (temp < result) {
@@ -222,8 +217,8 @@ library Equation {
             }
             return result;
         } else if (opcode >= OPCODE_ADD && opcode <= OPCODE_PCT) {
-            uint256 leftValue = solveMath(self, node.child0, xValue, yValue, zValue);
-            uint256 rightValue = solveMath(self, node.child1, xValue, yValue, zValue);
+            uint256 leftValue = solveMath(self, node.child0, variables);
+            uint256 rightValue = solveMath(self, node.child1, variables);
             if (opcode == OPCODE_ADD) {
                 return leftValue.add(rightValue);
             } else if (opcode == OPCODE_SUB) {
@@ -243,19 +238,19 @@ library Equation {
                 return leftValue.mul(rightValue).div(1e18);
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, xValue);
-            if (condValue) return solveMath(self, node.child1, xValue, yValue, zValue);
-            else return solveMath(self, node.child2, xValue, yValue, zValue);
+            bool condValue = solveBool(self, node.child0, variables);
+            if (condValue) return solveMath(self, node.child1, variables);
+            else return solveMath(self, node.child2, variables);
         } else if (opcode == OPCODE_BANCOR_LOG) {
-            uint256 multiplier = solveMath(self, node.child0, xValue, yValue, zValue);
-            uint256 baseN = solveMath(self, node.child1, xValue, yValue, zValue);
-            uint256 baseD = solveMath(self, node.child2, xValue, yValue, zValue);
+            uint256 multiplier = solveMath(self, node.child0, variables);
+            uint256 baseN = solveMath(self, node.child1, variables);
+            uint256 baseD = solveMath(self, node.child2, variables);
             return BancorPower.log(multiplier, baseN, baseD);
         } else if (opcode == OPCODE_BANCOR_POWER) {
-            uint256 multiplier = solveMath(self, node.child0, xValue, yValue, zValue);
-            uint256 baseN = solveMath(self, node.child1, xValue, yValue, zValue);
-            uint256 baseD = solveMath(self, node.child2, xValue, yValue, zValue);
-            uint256 expV = solveMath(self, node.child3, xValue, yValue, zValue);
+            uint256 multiplier = solveMath(self, node.child0, variables);
+            uint256 baseN = solveMath(self, node.child1, variables);
+            uint256 baseD = solveMath(self, node.child2, variables);
+            uint256 expV = solveMath(self, node.child3, variables);
             require(expV < 1 << 32);
             (uint256 expResult, uint8 precision) = BancorPower.power(baseN, baseD, uint32(expV), 1e6);
             return expResult.mul(multiplier) >> precision;
@@ -263,16 +258,16 @@ library Equation {
         revert();
     }
 
-    function solveBool(Node[] storage self, uint8 nodeIdx, uint256 xValue)
+    function solveBool(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
     private view returns (bool)
     {
         Node storage node = self[nodeIdx];
         uint8 opcode = node.opcode;
         if (opcode == OPCODE_NOT) {
-            return !solveBool(self, node.child0, xValue);
+            return !solveBool(self, node.child0, variables);
         } else if (opcode >= OPCODE_EQ && opcode <= OPCODE_GE) {
-            uint256 leftValue = solveMath(self, node.child0, xValue, 0, 0);
-            uint256 rightValue = solveMath(self, node.child1, xValue, 0, 0);
+            uint256 leftValue = solveMath(self, node.child0, variables);
+            uint256 rightValue = solveMath(self, node.child1, variables);
             if (opcode == OPCODE_EQ) {
                 return leftValue == rightValue;
             } else if (opcode == OPCODE_NE) {
@@ -287,18 +282,18 @@ library Equation {
                 return leftValue >= rightValue;
             }
         } else if (opcode >= OPCODE_AND && opcode <= OPCODE_OR) {
-            bool leftBoolValue = solveBool(self, node.child0, xValue);
+            bool leftBoolValue = solveBool(self, node.child0, variables);
             if (opcode == OPCODE_AND) {
-                if (leftBoolValue) return solveBool(self, node.child1, xValue);
+                if (leftBoolValue) return solveBool(self, node.child1, variables);
                 else return false;
             } else if (opcode == OPCODE_OR) {
                 if (leftBoolValue) return true;
-                else return solveBool(self, node.child1, xValue);
+                else return solveBool(self, node.child1, variables);
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, xValue);
-            if (condValue) return solveBool(self, node.child1, xValue);
-            else return solveBool(self, node.child2, xValue);
+            bool condValue = solveBool(self, node.child0, variables);
+            if (condValue) return solveBool(self, node.child1, variables);
+            else return solveBool(self, node.child2, variables);
         }
         revert();
     }
