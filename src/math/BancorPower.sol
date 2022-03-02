@@ -1,6 +1,6 @@
-pragma solidity 0.5.9;
+pragma solidity ^0.8.6;
 
-import "@openzeppelin/math/SafeMath.sol";
+import "@openzeppelin/utils/math/SafeMath.sol";
 
 /**
  * @title BancorPower, modified from the original "BancorFomula.sol"

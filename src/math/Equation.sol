@@ -1,6 +1,6 @@
-pragma solidity 0.5.9;
+pragma solidity ^0.8.6;
 
-import "@openzeppelin/math/SafeMath.sol";
+import "@openzeppelin/utils/math/SafeMath.sol";
 import "./BancorPower.sol";
 
 library Equation {
@@ -8,6 +8,7 @@ library Equation {
 
     /// An expression tree is encoded as a set of nodes, with root node having index zero. Each node has 3 values:
     ///  1. opcode: the expression that the node represents. See table below.
+    /// TODO: Update OPCODES
     /// +--------+----------------------------------------+------+------------+
     /// | Opcode |              Description               | i.e. | # children |
     /// +--------+----------------------------------------+------+------------+
@@ -57,7 +58,7 @@ library Equation {
     enum ExprType { Invalid, Math, Boolean }
 
     uint8 constant OPCODE_CONST = 0;
-    uint8 constant OPCODE_VAR = 1;
+    uint8 constant OPCODE_VAR = 1; // TODO Use variable indexes, this is just for testing
     uint8 constant OPCODE_VAR2 = 2;
     uint8 constant OPCODE_VAR3 = 3;
     uint8 constant OPCODE_SQRT = 4;
@@ -83,7 +84,7 @@ library Equation {
 
     /// @dev Initialize equation by array of opcodes/values in prefix order. Array
     /// is read as if it is the *pre-order* traversal of the expression tree.
-    function init(Node[] storage self, uint256[] calldata _expressions) external {
+    function init(Node[] storage self, uint256[] calldata _expressions) public {
         /// Init should only be called when the equation is not yet initialized.
         require(self.length == 0);
         /// Limit expression length to < 256 to make sure gas cost is managable.
@@ -103,18 +104,10 @@ library Equation {
         require(lastNodeIndex == self.length - 1);
     }
 
-    /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256 xValue, uint256 yValue, uint256 zValue) external view returns (uint256) {
-        return solveMath(self, 0, xValue, yValue, zValue);
-    }
+    // TODO Use variable indexes, this is just for testing
 
     /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256 xValue, uint256 yValue) external view returns (uint256) {
-        return solveMath(self, 0, xValue, yValue, 0);
-    }
-
-    /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256 xValue) external view returns (uint256) {
+    function calculate(Node[] storage self, uint256 xValue) public view returns (uint256) {
         return solveMath(self, 0, xValue, 0, 0);
     }
 
@@ -220,7 +213,7 @@ library Equation {
         } else if (opcode == OPCODE_VAR3) {
             return zValue;
         } else if (opcode == OPCODE_SQRT) {
-            uint256 childValue = solveMath(self, node.child0, xValue);
+            uint256 childValue = solveMath(self, node.child0, xValue, yValue, zValue);
             uint256 temp = childValue.add(1).div(2);
             uint256 result = childValue;
             while (temp < result) {
@@ -229,8 +222,8 @@ library Equation {
             }
             return result;
         } else if (opcode >= OPCODE_ADD && opcode <= OPCODE_PCT) {
-            uint256 leftValue = solveMath(self, node.child0, xValue);
-            uint256 rightValue = solveMath(self, node.child1, xValue);
+            uint256 leftValue = solveMath(self, node.child0, xValue, yValue, zValue);
+            uint256 rightValue = solveMath(self, node.child1, xValue, yValue, zValue);
             if (opcode == OPCODE_ADD) {
                 return leftValue.add(rightValue);
             } else if (opcode == OPCODE_SUB) {
@@ -251,18 +244,18 @@ library Equation {
             }
         } else if (opcode == OPCODE_IF) {
             bool condValue = solveBool(self, node.child0, xValue);
-            if (condValue) return solveMath(self, node.child1, xValue);
-            else return solveMath(self, node.child2, xValue);
+            if (condValue) return solveMath(self, node.child1, xValue, yValue, zValue);
+            else return solveMath(self, node.child2, xValue, yValue, zValue);
         } else if (opcode == OPCODE_BANCOR_LOG) {
-            uint256 multiplier = solveMath(self, node.child0, xValue);
-            uint256 baseN = solveMath(self, node.child1, xValue);
-            uint256 baseD = solveMath(self, node.child2, xValue);
+            uint256 multiplier = solveMath(self, node.child0, xValue, yValue, zValue);
+            uint256 baseN = solveMath(self, node.child1, xValue, yValue, zValue);
+            uint256 baseD = solveMath(self, node.child2, xValue, yValue, zValue);
             return BancorPower.log(multiplier, baseN, baseD);
         } else if (opcode == OPCODE_BANCOR_POWER) {
-            uint256 multiplier = solveMath(self, node.child0, xValue);
-            uint256 baseN = solveMath(self, node.child1, xValue);
-            uint256 baseD = solveMath(self, node.child2, xValue);
-            uint256 expV = solveMath(self, node.child3, xValue);
+            uint256 multiplier = solveMath(self, node.child0, xValue, yValue, zValue);
+            uint256 baseN = solveMath(self, node.child1, xValue, yValue, zValue);
+            uint256 baseD = solveMath(self, node.child2, xValue, yValue, zValue);
+            uint256 expV = solveMath(self, node.child3, xValue, yValue, zValue);
             require(expV < 1 << 32);
             (uint256 expResult, uint8 precision) = BancorPower.power(baseN, baseD, uint32(expV), 1e6);
             return expResult.mul(multiplier) >> precision;
@@ -278,8 +271,8 @@ library Equation {
         if (opcode == OPCODE_NOT) {
             return !solveBool(self, node.child0, xValue);
         } else if (opcode >= OPCODE_EQ && opcode <= OPCODE_GE) {
-            uint256 leftValue = solveMath(self, node.child0, xValue);
-            uint256 rightValue = solveMath(self, node.child1, xValue);
+            uint256 leftValue = solveMath(self, node.child0, xValue, 0, 0);
+            uint256 rightValue = solveMath(self, node.child1, xValue, 0, 0);
             if (opcode == OPCODE_EQ) {
                 return leftValue == rightValue;
             } else if (opcode == OPCODE_NE) {

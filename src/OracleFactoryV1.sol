@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.6;
 
 import "@openzeppelin/access/Ownable.sol";
 import "@chainlink/interfaces/AggregatorV3Interface.sol";
@@ -16,8 +16,8 @@ contract OracleFactoryV1 is Ownable {
 
     constructor(address[] memory initialOracles) {
         // For ease of deployment, fill the link oracles with your deployment script
-        for (int8 i = 0; i < initialOracles.length; i++) {
-            linkOracles[i] = initialOracles[i];
+        for (uint8 i = 0; i < initialOracles.length; i++) {
+            linkOracles.push(initialOracles[i]);
         }
     }
 
@@ -40,7 +40,7 @@ contract OracleFactoryV1 is Ownable {
         SynthOracleV1(deployed).init(address(this), _oracles, _expressions);
 
         // Add oracle to factory's collection
-        oracles.push(oracles);
+        oracles.push(deployed);
     }
 
     // -----------------------------

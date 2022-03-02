@@ -5,7 +5,7 @@ import "@chainlink/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/proxy/utils/Initializable.sol";
 import "./math/Equation.sol";
 
-contract SynthOracleV1 is Initializable, AggregatorV3Interface {
+contract SynthOracleV1 is Initializable {
 
     address public factory;
     AggregatorV3Interface[] public oracles;
@@ -28,8 +28,8 @@ contract SynthOracleV1 is Initializable, AggregatorV3Interface {
     function init(address _factory, address[] memory _oracles, uint256[] calldata _expressions) external initializer {
         // Set factory & ChainLink aggregators
         factory = _factory;
-        for (int i = 0; i < _oracles.length; i++) {
-            oracles[i] = AggregatorV3Interface(_oracles[i]);
+        for (uint i = 0; i < _oracles.length; i++) {
+            oracles.push(AggregatorV3Interface(_oracles[i]));
         }
 
         // Set up equation for performOperation
@@ -39,18 +39,10 @@ contract SynthOracleV1 is Initializable, AggregatorV3Interface {
     /**
      * Performs a special operation with data from available oracles
      */
-    function getLatestValue() external view returns (int256) {
+    function getLatestValue() public view returns (int256) {
+        // TODO Use variable indexes, this is just for testing
         (,int256 xValue,,,) = oracles[0].latestRoundData();
-        uint256 yValue;
-        uint256 zValue;
-        if (oracles.length >= 2) {
-            (,yValue,,,) = oracles[1].latestRoundData();
-        }
-        if (oracles.length == 3) {
-            (,zValue,,,) = oracles[2].latestRoundData();
-        }
-
-        return Equation.calculate(nodes, price);
+        return int256(Equation.calculate(nodes, uint256(xValue)));
     }
 
     /**
@@ -70,6 +62,6 @@ contract SynthOracleV1 is Initializable, AggregatorV3Interface {
         answeredInRound = 0;
 
         // Set oracle price to oracle operation
-        answer = performOperation();
+        answer = getLatestValue();
     }
 }
