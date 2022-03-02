@@ -28,7 +28,7 @@ contract DelphiFactoryV1Test is DSTest {
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
-        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle(linkOracles, expressions));
+        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("2xETH", linkOracles, expressions));
 
         assertEq(oracle.getLatestValue(), 600061253072);
     }
@@ -46,7 +46,7 @@ contract DelphiFactoryV1Test is DSTest {
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
-        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle(linkOracles, expressions));
+        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("ETH+BTC", linkOracles, expressions));
 
         assertEq(oracle.getLatestValue(), 4726644626536);
     }
@@ -70,13 +70,13 @@ contract DelphiFactoryV1Test is DSTest {
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
-        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle(linkOracles, expressions));
+        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("(ETH+BTC) / LINK", linkOracles, expressions));
 
         assertEq(oracle.getLatestValue(), 73783201397727);
     }
 
     // Helper function to get link oracles in form of address[] memory
-    function _getLinkOracles() private view returns (address[] memory linkOracles) {
+    function _getLinkOracles() private pure returns (address[] memory linkOracles) {
         linkOracles = new address[](3);
         linkOracles[0] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // ETH/USD -> x
         linkOracles[1] = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c; // BTC/USD -> y

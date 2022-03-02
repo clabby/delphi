@@ -29,9 +29,14 @@ import "./DelphiOracleV1.sol";
 
 */
 contract DelphiFactoryV1 is Ownable {
+
     address[] public oracles;
     mapping(address => bool) public endorsed;
     mapping(address => bool) public linkAggregators;
+
+    event OracleCreation(string _name, address _address);
+    event AllowAggregator(address _aggregator, bool _isAllowed);
+    event Endorsement(address _oracle, bool _isEndorsed);
 
     // heh heh
     bytes32 public SALT = 0xfff6c856a1f2b4269a1d1d9bacd121f1c9273b6650961875824ce18cfc2ed86e;
@@ -40,6 +45,7 @@ contract DelphiFactoryV1 is Ownable {
         // For ease of deployment, fill the link oracles with your deployment script
         for (uint8 i = 0; i < _aggregators.length; i++) {
             linkAggregators[_aggregators[i]] = true;
+            emit AllowAggregator(_aggregators[i], true);
         }
     }
 
@@ -51,10 +57,12 @@ contract DelphiFactoryV1 is Ownable {
      * Create an oracle that performs an arbitrary mathematical operation
      * on one or more ChainLink aggregator feeds.
      *
+     * @param _name Name of the Oracle contract (For front-ends)
      * @param _aggregators ChainLink aggregators used in oracle
      * @param _expressions Equation OPCODEs & values
      */
     function createOracle(
+        string memory _name,
         address[] memory _aggregators,
         uint256[] calldata _expressions
     ) external returns (address deployed) {
@@ -71,10 +79,13 @@ contract DelphiFactoryV1 is Ownable {
         );
 
         // Initialize new oracle
-        DelphiOracleV1(deployed).init(address(this), _aggregators, _expressions);
+        DelphiOracleV1(deployed).init(_name, msg.sender, _aggregators, _expressions);
 
         // Add oracle to factory's collection
         oracles.push(deployed);
+
+        // Emit OracleCreation event
+        emit OracleCreation(_name, deployed);
     }
 
     /**
@@ -105,6 +116,7 @@ contract DelphiFactoryV1 is Ownable {
      */
     function setAllowAggregator(address _aggregator, bool _allow) external onlyOwner {
         linkAggregators[_aggregator] = _allow;
+        emit AllowAggregator(_aggregator, _allow);
     }
 
     /**
@@ -117,5 +129,6 @@ contract DelphiFactoryV1 is Ownable {
      */
     function setEndorsed(address _oracle, bool _endorsed) external onlyOwner {
         endorsed[_oracle] = _endorsed;
+        emit Endorsement(_oracle, _endorsed);
     }
 }

@@ -7,6 +7,7 @@ import "./math/Equation.sol";
 
 contract DelphiOracleV1 is Initializable {
 
+    string public name;
     address public creator; // Gotta give oracle creators creds <3
     address public factory;
     AggregatorV3Interface[] public aggregators;
@@ -23,13 +24,21 @@ contract DelphiOracleV1 is Initializable {
     /**
      * Initialize the Oracle
      *
-     * @param _factory Address of this contract's CREATE2 factory
+     * @param _name Name of the Oracle contract (For front-ends)
+     * @param _creator Creator of the contract, passed by the factory
      * @param _oracles ChainLink aggregators to use in performOperation()
+     * @param _expressions Equation OPCODEs & values
      */
-    function init(address _factory, address[] memory _oracles, uint256[] calldata _expressions) external initializer {
+    function init(
+        string memory _name,
+        address _creator,
+        address[] memory _oracles,
+        uint256[] calldata _expressions
+    ) external initializer {
         // Set creator, factory & ChainLink aggregators
-        creator = msg.sender;
-        factory = _factory;
+        creator = _creator;
+        name = _name;
+        factory = msg.sender;
         for (uint i = 0; i < _oracles.length; i++) {
             aggregators.push(AggregatorV3Interface(_oracles[i]));
         }
