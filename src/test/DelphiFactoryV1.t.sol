@@ -2,10 +2,10 @@
 pragma solidity ^0.8.6;
 
 import "ds-test/test.sol";
-import "../OracleFactoryV1.sol";
+import "../DelphiFactoryV1.sol";
 
-contract OracleFactoryV1Test is DSTest {
-    OracleFactoryV1 factory;
+contract DelphiFactoryV1Test is DSTest {
+    DelphiFactoryV1 factory;
 
     function setUp() public {
         address[] memory linkOracles = _getLinkOracles();
@@ -27,7 +27,7 @@ contract OracleFactoryV1Test is DSTest {
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
-        SynthOracleV1 oracle = SynthOracleV1(factory.createOracle(linkOracles, expressions));
+        DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle(linkOracles, expressions));
 
         assertEq(oracle.getLatestValue(), 600061253072);
     }

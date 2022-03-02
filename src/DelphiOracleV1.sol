@@ -5,8 +5,9 @@ import "@chainlink/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/proxy/utils/Initializable.sol";
 import "./math/Equation.sol";
 
-contract SynthOracleV1 is Initializable {
+contract DelphiOracleV1 is Initializable {
 
+    address public creator; // Gotta give oracle creators creds <3
     address public factory;
     AggregatorV3Interface[] public oracles;
     Equation.Node[] public nodes;
@@ -26,7 +27,8 @@ contract SynthOracleV1 is Initializable {
      * @param _oracles ChainLink aggregators to use in performOperation()
      */
     function init(address _factory, address[] memory _oracles, uint256[] calldata _expressions) external initializer {
-        // Set factory & ChainLink aggregators
+        // Set creator, factory & ChainLink aggregators
+        creator = msg.sender;
         factory = _factory;
         for (uint i = 0; i < _oracles.length; i++) {
             oracles.push(AggregatorV3Interface(_oracles[i]));
