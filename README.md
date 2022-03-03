@@ -8,7 +8,7 @@ Utilizes a modified version of [Band Protocol's equation evaluation library](htt
 that allows for multiple variables to be used.
 
 ## Specification
-* `OracleFactoryV1`
+* `DelphiFactoryV1`
   * `createOracle(string _name, address[] _aggregators, uint256[] _expressions)`
     * Creates an oracle that uses the given aggregators and evaluates the equation defined in _expressions.
     * `_expressions` is an array of Opcodes and their children. (See `src/math/Equation.sol` for more info)
@@ -19,7 +19,7 @@ that allows for multiple variables to be used.
   * `setEndorsed(address _oracle, bool _endorsed)`
     * **ADMIN FUNCTION:** Endorses/Unendorses an oracle that was created by the factory.
 * `DelphiOracleV1`
-  * `init(address _factory, address[] _oracles, uint256[] _expressions)`
+  * `init(address _factory, address[] _aggregators, uint256[] _expressions)`
     * Called by the `DelphiFactoryV1` contract upon creation of the oracle. Can only be called once.
   * `getLatestValue() view returns (int256)`
     * Returns the latest value of the oracle by executing the equation with the most recent data from ChainLink Aggregators.
