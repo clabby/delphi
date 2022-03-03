@@ -38,9 +38,6 @@ contract DelphiFactoryV1 is Ownable {
     event AllowAggregator(address _aggregator, bool _isAllowed);
     event Endorsement(address _oracle, bool _isEndorsed);
 
-    // heh heh
-    bytes32 public SALT = 0xfff6c856a1f2b4269a1d1d9bacd121f1c9273b6650961875824ce18cfc2ed86e;
-
     constructor(address[] memory _aggregators) {
         // For ease of deployment, fill the link oracles with your deployment script
         for (uint8 i = 0; i < _aggregators.length; i++) {
@@ -73,7 +70,7 @@ contract DelphiFactoryV1 is Ownable {
 
         // Deploy new synth oracle
         deployed = CREATE3.deploy(
-            SALT,
+            keccak256(abi.encodePacked(_aggregators, _expressions)), // Use aggregators and expression as CREATE2 salt to prevent duplicate oracles that perform the same equation on the same oracles
             type(DelphiOracleV1).creationCode,
             0
         );
