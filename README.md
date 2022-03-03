@@ -9,8 +9,9 @@ that allows for multiple variables to be used.
 
 ## Specification
 * `OracleFactoryV1`
-  * `createOracle(address[] _aggregators, uint256[] _expressions)`
-    * _TODO_
+  * `createOracle(string _name, address[] _aggregators, uint256[] _expressions)`
+    * Creates an oracle that uses the given aggregators and evaluates the equation defined in _expressions.
+    * `_expressions` is an array of Opcodes and their children. (See `src/math/Equation.sol` for more info)
   * `getOracles(bool _isEndorsed) view returns (address[] memory _oracles)`
     * Returns all endorsed/non-endorsed oracles created by the factory.
   * `setAllowAggregator(address _aggregator, bool _allow)`
@@ -22,14 +23,16 @@ that allows for multiple variables to be used.
     * Called by the `DelphiFactoryV1` contract upon creation of the oracle. Can only be called once.
   * `getLatestValue() view returns (int256)`
     * Returns the latest value of the oracle by executing the equation with the most recent data from ChainLink Aggregators.
-  * `latestRoundData()`
-    * _TODO_
 
 ## Application
 *TODO*
 
 ## TODO
+Contracts:
 - [x] **Add ability to use multiple variables in oracle's equation.**
-- [ ] Scale all LINK aggregator results to 1e18 to keep results uniform / promote ease of use.
+- [x] Scale all ChainLink aggregator results to 1e18 to keep results uniform / promote ease of use.
+- [ ] *?* Use ChainLink `AggregatorV2V3Interface` instead of `AggregatorV3Interface`
+
+Front-end:
 - [ ] Design Front-End for easy oracle creation. (See: [Shunting-yard Algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) & [polish notation](https://en.wikipedia.org/wiki/Polish_notation))
 - [ ] Make a subgraph, everybody likes subgraphs.

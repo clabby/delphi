@@ -30,7 +30,7 @@ contract DelphiFactoryV1Test is DSTest {
         // Deploy Oracle
         DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("2xETH", linkOracles, expressions));
 
-        assertEq(oracle.getLatestValue(), 600061253072);
+        assertEq(oracle.getLatestValue(), 6000612530720000000000);
     }
 
     // Test is pinned to block #14305846
@@ -48,7 +48,7 @@ contract DelphiFactoryV1Test is DSTest {
         // Deploy Oracle
         DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("ETH+BTC", linkOracles, expressions));
 
-        assertEq(oracle.getLatestValue(), 4726644626536);
+        assertEq(oracle.getLatestValue(), 47266446265360000000000);
     }
 
     // Test is pinned to block #14305846
@@ -65,14 +65,14 @@ contract DelphiFactoryV1Test is DSTest {
         expressions[7] = 1;
         expressions[8] = 2;
         expressions[9] = 0;
-        expressions[10] = 1e8;
+        expressions[10] = 1e18;
 
         address[] memory linkOracles = _getLinkOracles();
 
         // Deploy Oracle
         DelphiOracleV1 oracle = DelphiOracleV1(factory.createOracle("(ETH+BTC) / LINK", linkOracles, expressions));
 
-        assertEq(oracle.getLatestValue(), 73783201397727);
+        assertEq(oracle.getLatestValue(), 737832013977270330932800);
     }
 
     // Helper function to get link oracles in form of address[] memory

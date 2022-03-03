@@ -54,7 +54,7 @@ contract DelphiOracleV1 is Initializable {
         uint256[] memory variables = new uint256[](aggregators.length);
         for (uint8 i = 0; i < aggregators.length; i++) {
             (,int256 value,,,) = aggregators[i].latestRoundData();
-            variables[i] = uint256(value);
+            variables[i] = uint256(value) * (10 ** (18 - aggregators[i].decimals())); // Scale all values to 1e18
         }
         return int256(Equation.calculate(nodes, variables));
     }
