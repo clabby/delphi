@@ -26,21 +26,21 @@ contract DelphiOracleV1 is Initializable {
      *
      * @param _name Name of the Oracle contract (For front-ends)
      * @param _creator Creator of the contract, passed by the factory
-     * @param _oracles ChainLink aggregators to use in performOperation()
+     * @param _aggregators ChainLink aggregators to use in performOperation()
      * @param _expressions Equation OPCODEs & values
      */
     function init(
         string memory _name,
         address _creator,
-        address[] memory _oracles,
+        address[] memory _aggregators,
         uint256[] calldata _expressions
     ) external initializer {
         // Set creator, factory & ChainLink aggregators
         creator = _creator;
         name = _name;
         factory = msg.sender;
-        for (uint i = 0; i < _oracles.length; i++) {
-            aggregators.push(AggregatorV3Interface(_oracles[i]));
+        for (uint i = 0; i < _aggregators.length; i++) {
+            aggregators.push(AggregatorV3Interface(_aggregators[i]));
         }
 
         // Set up equation for performOperation
