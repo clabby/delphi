@@ -2,16 +2,16 @@
 pragma solidity ^0.8.6;
 
 import "@chainlink/interfaces/AggregatorV3Interface.sol";
-import "@openzeppelin/proxy/utils/Initializable.sol";
 import "./math/Equation.sol";
 
-contract DelphiOracleV1 is Initializable {
+contract DelphiOracleV1 {
 
     string public name;
     address public creator; // Gotta give oracle creators creds <3
     address public factory;
     AggregatorV3Interface[] public aggregators;
     Equation.Node[] public nodes;
+    bool private initialized = false;
 
     constructor () {
         // unused
@@ -34,7 +34,9 @@ contract DelphiOracleV1 is Initializable {
         address _creator,
         address[] memory _aggregators,
         uint256[] calldata _expressions
-    ) external initializer {
+    ) external {
+        require(!initialized, "Error: ALREADY_INITIALIZED");
+
         // Set creator, factory & ChainLink aggregators
         creator = _creator;
         name = _name;
@@ -45,6 +47,7 @@ contract DelphiOracleV1 is Initializable {
 
         // Set up equation for performOperation
         Equation.init(nodes, _expressions);
+        initialized = true;
     }
 
     /**

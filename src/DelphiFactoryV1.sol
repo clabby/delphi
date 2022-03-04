@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.6;
 
-import "@openzeppelin/access/Ownable.sol";
 import "@chainlink/interfaces/AggregatorV3Interface.sol";
 import "solmate/utils/CREATE3.sol";
 import "./DelphiOracleV1.sol";
@@ -28,15 +27,17 @@ import "./DelphiOracleV1.sol";
     Delphi Oracle Factory
 
 */
-contract DelphiFactoryV1 is Ownable {
+contract DelphiFactoryV1 {
 
     address[] public oracles;
+    address public owner;
     mapping(address => bool) public endorsed;
     mapping(address => bool) public linkAggregators;
 
     event OracleCreation(string _name, address _address);
     event AllowAggregator(address _aggregator, bool _isAllowed);
     event Endorsement(address _oracle, bool _isEndorsed);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
     constructor(address[] memory _aggregators) {
         // For ease of deployment, fill the link oracles with your deployment script
@@ -44,6 +45,7 @@ contract DelphiFactoryV1 is Ownable {
             linkAggregators[_aggregators[i]] = true;
             emit AllowAggregator(_aggregators[i], true);
         }
+        owner = msg.sender;
     }
 
     // -----------------------------
@@ -111,7 +113,9 @@ contract DelphiFactoryV1 is Ownable {
      * @param _aggregator ChainLink Aggregator to allow/disallow
      * @param _allow Allowed=true|Disallowed=false
      */
-    function setAllowAggregator(address _aggregator, bool _allow) external onlyOwner {
+    function setAllowAggregator(address _aggregator, bool _allow) external {
+        require(msg.sender == owner, "Error: NOT_OWNER");
+
         linkAggregators[_aggregator] = _allow;
         emit AllowAggregator(_aggregator, _allow);
     }
@@ -124,8 +128,22 @@ contract DelphiFactoryV1 is Ownable {
      * @param _oracle ChainLink Aggregator to endorse
      * @param _endorsed Endorsed=true|Remove=false
      */
-    function setEndorsed(address _oracle, bool _endorsed) external onlyOwner {
+    function setEndorsed(address _oracle, bool _endorsed) external {
+        require(msg.sender == owner, "Error: NOT_OWNER");
+
         endorsed[_oracle] = _endorsed;
         emit Endorsement(_oracle, _endorsed);
+    }
+
+    /**
+     * Transfer contract ownership
+     *
+     * @param _newOwner New owner of the contract
+     */
+    function transferOwnership(address _newOwner) external {
+        require(msg.sender == owner, "Error: NOT_OWNER");
+
+        owner = _newOwner;
+        emit OwnershipTransferred(msg.sender, _newOwner);
     }
 }
