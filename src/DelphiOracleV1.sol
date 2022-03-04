@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.6;
 
-import "@chainlink/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/interfaces/AggregatorV2V3Interface.sol";
 import "./math/Equation.sol";
 
 contract DelphiOracleV1 {
@@ -9,7 +9,7 @@ contract DelphiOracleV1 {
     string public name;
     address public creator; // Gotta give oracle creators creds <3
     address public factory;
-    AggregatorV3Interface[] public aggregators;
+    AggregatorV2V3Interface[] public aggregators;
     Equation.Node[] public nodes;
     bool private initialized = false;
 
@@ -42,7 +42,7 @@ contract DelphiOracleV1 {
         name = _name;
         factory = msg.sender;
         for (uint i = 0; i < _aggregators.length; i++) {
-            aggregators.push(AggregatorV3Interface(_aggregators[i]));
+            aggregators.push(AggregatorV2V3Interface(_aggregators[i]));
         }
 
         // Set up equation for performOperation
@@ -56,14 +56,14 @@ contract DelphiOracleV1 {
     function getLatestValue() public view returns (int256) {
         uint256[] memory variables = new uint256[](aggregators.length);
         for (uint8 i = 0; i < aggregators.length; i++) {
-            (,int256 value,,,) = aggregators[i].latestRoundData();
+            int256 value = aggregators[i].latestAnswer();
             variables[i] = uint256(value) * (10 ** (18 - aggregators[i].decimals())); // Scale all values to 1e18
         }
         return int256(Equation.calculate(nodes, variables));
     }
 
     /**
-     * Get the latest value of the oracle (performOperation remap to work with AggregatorV3Interface)
+     * Get the latest value of the oracle (performOperation remap to work with AggregatorV2V3Interface)
      */
     function latestRoundData() external view returns (
         uint80 roundId,
@@ -82,7 +82,14 @@ contract DelphiOracleV1 {
         answer = getLatestValue();
     }
 
-    function getAggregators() external view returns (AggregatorV3Interface[] memory) {
+    /**
+     * Get the latest value of the oracle (performOperation remap to work with AggregatorV2V3Interface)
+     */
+    function latestAnswer() external view returns (int256) {
+        return getLatestValue();
+    }
+
+    function getAggregators() external view returns (AggregatorV2V3Interface[] memory) {
         return aggregators;
     }
 
