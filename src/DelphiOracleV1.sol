@@ -78,4 +78,12 @@ contract DelphiOracleV1 is Initializable {
         // Set oracle price to oracle operation
         answer = getLatestValue();
     }
+
+    function getAggregators() external view returns (AggregatorV3Interface[] memory) {
+        return aggregators;
+    }
+
+    function getNodes() external view returns (Equation.Node[] memory) {
+        return nodes;
+    }
 }
