@@ -1,4 +1,4 @@
-# Delphi 🔮🌜
+# Delphi 🔮🌜 ![Test Workflow](https://github.com/baofinance/delphi/actions/workflows/dapptoolstests.yml/badge.svg) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 Delphi is a set of contracts that allows anyone to permissionlessly create
 oracles which perform an arbitrary mathematical operation on data from
@@ -24,17 +24,8 @@ that allows for multiple variables to be used.
   * `getLatestValue() view returns (int256)`
     * Returns the latest value of the oracle by executing the equation with the most recent data from ChainLink Aggregators.
 
-## Application
-*TODO*
-
-## Test Deployments
-*Testnet deployments are subject to frequent change while in development*
-
-| Contract         | Network | Address                                    | Explorer                                                                              |
-|------------------|---------|--------------------------------------------|---------------------------------------------------------------------------------------|
-| DelphiFactoryV1  | Kovan   | 0xfbb23eef7dbf575c156798533bf52be482d235e5 | [Link](https://kovan.etherscan.io/address/0xfbb23eef7dbf575c156798533bf52be482d235e5) |
-| Equation Library | Kovan   | 0xff9b4dd7c88442255f720b2611bda8a91bf661bf | [Link](https://kovan.etherscan.io/address/0xff9b4dd7c88442255f720b2611bda8a91bf661bf) |
-| 2xETH Oracle     | Kovan   | 0xb2d1D494cA62a5d8220AFf9372cEe61A354C7c1c | [Link](https://kovan.etherscan.io/address/0xb2d1D494cA62a5d8220AFf9372cEe61A354C7c1c) |
+## Deployments
+See [DEPLOYMENTS.md](./DEPLOYMENTS.md)
 
 ## TODO
 Contracts:
@@ -48,4 +39,7 @@ Contracts:
 
 Front-end:
 - [ ] Design Front-End for easy oracle creation. (See: [Shunting-yard Algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) & [polish notation](https://en.wikipedia.org/wiki/Polish_notation))
-- [ ] Make a subgraph, everybody likes subgraphs.
+- [x] Make a subgraph, everybody likes subgraphs.
+
+## Powered By
+![ChainLink Logo](https://i.imgur.com/LoM6Tg7.png)
