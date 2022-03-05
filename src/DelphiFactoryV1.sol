@@ -86,22 +86,6 @@ contract DelphiFactoryV1 {
         emit OracleCreation(_name, deployed);
     }
 
-    /**
-     * Get all oracles created by this factory, endorsed or non-endorsed
-     *
-     * @param _isEndorsed Endorsed=true|Non-endorsed=false
-     * @return _oracles All endorsed/non-endorsed oracles
-     */
-    function getOracles(bool _isEndorsed) external view returns (address[] memory _oracles) {
-        uint8 index = 0;
-        for (uint i = 0; i < oracles.length; i++) {
-            if (endorsed[oracles[i]] == _isEndorsed) {
-                _oracles[index++] = oracles[i];
-            }
-        }
-        return _oracles;
-    }
-
     // -----------------------------
     // ADMIN FUNCTIONS
     // -----------------------------

@@ -31,7 +31,7 @@ See [DEPLOYMENTS.md](./DEPLOYMENTS.md)
 Contracts:
 - [x] **Add ability to use multiple variables in oracle's equation.**
 - [x] Scale all ChainLink aggregator results to 1e18 to keep results uniform / promote ease of use.
-- [ ] Fix bug with `DelphiFactoryV1#getOracles(bool _isEndorsed)`
+- [x] ~~Fix bug with `DelphiFactoryV1#getOracles(bool _isEndorsed)`.~~
 - [x] Write more extensive tests **_(could still use a few more)_**
 - [ ] Optimize size of `DelphiOracleV1` for cheaper creation
 - [ ] Optimize gas consumed by `DelphiOracleV1#getLatestPrice()`. It will naturally be more expensive for more complex equations.
