@@ -47,6 +47,11 @@ contract DelphiFactoryV1 {
         owner = msg.sender;
     }
 
+    modifier onlyOwner {
+        require(msg.sender == owner, "Error: CALLER_NOT_OWNER");
+        _;
+    }
+
     // -----------------------------
     // PUBLIC FUNCTIONS
     // -----------------------------
@@ -96,9 +101,7 @@ contract DelphiFactoryV1 {
      * @param _aggregator ChainLink Aggregator to allow/disallow
      * @param _allow Allowed=true|Disallowed=false
      */
-    function setAllowAggregator(address _aggregator, bool _allow) external {
-        require(msg.sender == owner, "Error: NOT_OWNER");
-
+    function setAllowAggregator(address _aggregator, bool _allow) external onlyOwner {
         linkAggregators[_aggregator] = _allow;
         emit AllowAggregator(_aggregator, _allow);
     }
@@ -111,9 +114,7 @@ contract DelphiFactoryV1 {
      * @param _oracle ChainLink Aggregator to endorse
      * @param _endorsed Endorsed=true|Remove=false
      */
-    function setEndorsed(address _oracle, bool _endorsed) external {
-        require(msg.sender == owner, "Error: NOT_OWNER");
-
+    function setEndorsed(address _oracle, bool _endorsed) external onlyOwner {
         endorsed[_oracle] = _endorsed;
         emit Endorsement(_oracle, _endorsed);
     }
@@ -123,9 +124,7 @@ contract DelphiFactoryV1 {
      *
      * @param _newOwner New owner of the contract
      */
-    function transferOwnership(address _newOwner) external {
-        require(msg.sender == owner, "Error: NOT_OWNER");
-
+    function transferOwnership(address _newOwner) external onlyOwner {
         owner = _newOwner;
         emit OwnershipTransferred(msg.sender, _newOwner);
     }
