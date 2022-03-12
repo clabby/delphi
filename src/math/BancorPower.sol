@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.6;
 
 import "./SafeMath.sol";
 
 /**
+ *
+ *
  * @title BancorPower, modified from the original "BancorFomula.sol"
  *        written by Bancor https://github.com/bancorprotocol/contracts
  *
@@ -11,7 +14,7 @@ import "./SafeMath.sol";
  *  2. Change code from Contract to Library and change maxExpArray from being array
  *     with binary search inside `findPositionInMaxExpArray` to a simple linear search.
  *  3. Add requirement check that baseN >= baseD (this is always true for Bancor).
- * Licensed under Apache Lisense, Version 2.0.
+ * Licensed under Apache License, Version 2.0.
  */
 library BancorPower {
     using SafeMath for uint256;

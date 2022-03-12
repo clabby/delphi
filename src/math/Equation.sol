@@ -1,8 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.6;
 
 import "./SafeMath.sol";
 import "./BancorPower.sol";
 
+/**
+ * Modified version of Band Protocol's Equation.sol
+ *
+ * https://github.com/bandprotocol/contracts/blob/master/contracts/utils/Equation.sol
+ * Licensed under Apache License, Version 2.0.
+ */
 library Equation {
     using SafeMath for uint256;
 
@@ -93,7 +100,9 @@ library Equation {
             require(opcode < OPCODE_INVALID);
             Node memory node;
             node.opcode = uint8(opcode);
-            /// Get the node's value. Only applicable on Integer Constant case.
+            /// Get the node's value. Applicable for OPCODE_CONST and OPCODE_VAR
+            /// For OPCODE_CONST, the value is the constant itself
+            /// For OPCODE_VAR, the value is the index of the variable inside of the passed "variables" array
             if (opcode == OPCODE_CONST) {
                 node.value = _expressions[++idx];
             } else if (opcode == OPCODE_VAR) {
