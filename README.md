@@ -27,19 +27,5 @@ that allows for multiple variables to be used.
 ## Deployments
 See [DEPLOYMENTS.md](./DEPLOYMENTS.md)
 
-## TODO
-Contracts:
-- [x] **Add ability to use multiple variables in oracle's equation.**
-- [x] Scale all ChainLink aggregator results to 1e18 to keep results uniform / promote ease of use.
-- [x] ~~Fix bug with `DelphiFactoryV1#getOracles(bool _isEndorsed)`.~~
-- [x] Write more extensive tests **_(could still use a few more)_**
-- [ ] Optimize size of `DelphiOracleV1` for cheaper creation
-- [ ] Optimize gas consumed by `DelphiOracleV1#getLatestPrice()`. It will naturally be more expensive for more complex equations.
-- [x] Use ChainLink `AggregatorV2V3Interface` instead of `AggregatorV3Interface`
-
-Front-end:
-- [ ] Design Front-End for easy oracle creation. (See: [Shunting-yard Algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) & [polish notation](https://en.wikipedia.org/wiki/Polish_notation))
-- [x] Make a subgraph, everybody likes subgraphs.
-
 ## Powered By
 ![ChainLink Logo](https://i.imgur.com/LoM6Tg7.png)
