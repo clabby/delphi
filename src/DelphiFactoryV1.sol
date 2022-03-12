@@ -39,10 +39,11 @@ contract DelphiFactoryV1 {
     event OwnershipTransferred(address previousOwner, address newOwner);
 
     constructor(address[] memory _aggregators) {
-        // For ease of deployment, fill the link oracles with your deployment script
-        for (uint8 i = 0; i < _aggregators.length; i++) {
+        // For ease of deployment, instantiate the contract with allowed aggregators
+        for (uint8 i = 0; i < _aggregators.length;) {
             linkAggregators[_aggregators[i]] = true;
             emit AllowAggregator(_aggregators[i], true);
+            unchecked { ++i; }
         }
         owner = msg.sender;
     }
@@ -70,8 +71,9 @@ contract DelphiFactoryV1 {
         uint256[] calldata _expressions
     ) external returns (address deployed) {
         // Check that all oracles are whitelisted
-        for (uint8 i = 0; i < _aggregators.length; i++) {
+        for (uint8 i = 0; i < _aggregators.length;) {
             require(linkAggregators[_aggregators[i]] == true, "Error: ORACLE_NOT_ALLOWED");
+            unchecked { ++i; }
         }
 
         // Deploy new synth oracle

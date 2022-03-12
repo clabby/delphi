@@ -13,10 +13,6 @@ contract DelphiOracleV1 {
     Equation.Node[] public nodes;
     bool private initialized = false;
 
-    constructor () {
-        // unused
-    }
-
     // -----------------------------
     // PUBLIC FUNCTIONS
     // -----------------------------
@@ -41,8 +37,10 @@ contract DelphiOracleV1 {
         creator = _creator;
         name = _name;
         factory = msg.sender;
-        for (uint i = 0; i < _aggregators.length; i++) {
+
+        for (uint8 i = 0; i < _aggregators.length;) {
             aggregators.push(AggregatorV2V3Interface(_aggregators[i]));
+            unchecked { ++i; }
         }
 
         // Set up equation for performOperation
@@ -55,9 +53,9 @@ contract DelphiOracleV1 {
      */
     function getLatestValue() public view returns (int256) {
         uint256[] memory variables = new uint256[](aggregators.length);
-        for (uint8 i = 0; i < aggregators.length; i++) {
-            int256 value = aggregators[i].latestAnswer();
-            variables[i] = uint256(value) * (10 ** (18 - aggregators[i].decimals())); // Scale all values to 1e18
+        for (uint8 i = 0; i < aggregators.length;) {
+            variables[i] = uint256(aggregators[i].latestAnswer()) * (10 ** (18 - aggregators[i].decimals())); // Scale all values to 1e18
+            unchecked { ++i; }
         }
         return int256(Equation.calculate(nodes, variables));
     }
@@ -89,10 +87,16 @@ contract DelphiOracleV1 {
         return getLatestValue();
     }
 
+    /**
+     * Get the array of LINK aggregators the oracle utilizes
+     */
     function getAggregators() external view returns (AggregatorV2V3Interface[] memory) {
         return aggregators;
     }
 
+    /**
+     * Get the oracle's equation nodes
+     */
     function getNodes() external view returns (Equation.Node[] memory) {
         return nodes;
     }
