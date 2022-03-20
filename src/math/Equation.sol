@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.10;
 
 import "./SafeMath.sol";
 import "./BancorPower.sol";
@@ -179,7 +179,7 @@ library Equation {
         revert();
     }
 
-    /// Helper function to recursively populate node infoMaprmation following the given pre-order
+    /// Helper function to recursively populate node information following the given pre-order
     /// node list. It inspects the opcode and recursively call populateTree(s) accordingly.
     /// @param self storage pointer to equation data to build tree.
     /// @param currentNodeIndex the index of the current node to populate infoMap.
