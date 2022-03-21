@@ -269,30 +269,32 @@ library EquationV2 {
         revert();
     }
 
+    // TODO: Convert these functions to Yul
+
     function encodeExpressions(uint256[] memory _expressions) public view returns (
         uint256[] memory encoded,
         uint16[] memory slices
     ) {
-        encoded = new uint256[](1);
+        encoded = new uint256[](5); // TODO: Determine a max uint256 pack
         slices = new uint16[](_expressions.length);
 
         encoded[0] |= _expressions[0];
 
         uint256 expr;
         uint8 idx;
-        uint16 shiftAmount;
+        uint16 curShift;
         for (uint8 i = 1; i < _expressions.length;) {
             expr = _expressions[i];
-            shiftAmount += expr > 255 ? 128 : 8; // If the number will overflow a uint8, set its slot to a uint128
+            curShift += expr > 255 ? 128 : 8; // If the number will overflow a uint8, set its slot to a uint128
 
-            // If we're about to overflow the uint256, add another one to the array
-            if (shiftAmount > 256) {
-                shiftAmount = 0;
+            // If we're about to overflow the current uint256, begin packing into another one
+            if (curShift > 0x100) {
+                curShift = 0;
                 unchecked { ++idx; }
             }
 
-            encoded[idx] |= expr << shiftAmount;
-            slices[i] = shiftAmount;
+            encoded[idx] |= expr << curShift;
+            slices[i] = curShift;
             unchecked { ++i; }
         }
     }
@@ -302,24 +304,35 @@ library EquationV2 {
         uint16[] memory slices
     ) public view returns (uint256[] memory expressions) {
         expressions = new uint256[](slices.length);
+        // The first expression of a valid equation will always be an opcode in the first 8 bits
+        expressions[0] = uint8(_encoded[0]);
+
         uint8 idx;
-
-        expressions[0] = uint8(_encoded[0]); // The first expression will always be in the first 8 bits of the encoded expression
-
         uint16 a;
         uint16 b;
-        for (uint8 i = 1; i < slices.length; i++) {
+        for (uint8 i = 1; i < slices.length;) {
             a = slices[i];
             b = slices[i - 1];
-            if (a < b) {
+
+            // If we're still in the same uint256, check the difference between the slices to determine slice length
+            if (a > b) {
+                expressions[i] = uint256(
+                    a - b == 128
+                    ? uint128(_encoded[idx] >> a)
+                    : uint8(_encoded[idx] >> a)
+                );
+            }
+            // Otherwise, move on to the next uint256
+            else {
                 unchecked { ++idx; }
+                expressions[i] = uint256(
+                    a == 128 // TODO: This is bugged. The first slice of a uint256 will always start at 0, need to determine whether it is 8 or 128 bits long.
+                    ? uint128(_encoded[idx] >> a)
+                    : uint8(_encoded[idx] >> a)
+                );
             }
 
-            expressions[i] = uint256(
-                a - b == 128
-                ? uint128(_encoded[idx] >> slices[i])
-                : uint8(_encoded[idx] >> slices[i])
-            );
+            unchecked { ++i; }
         }
     }
 }

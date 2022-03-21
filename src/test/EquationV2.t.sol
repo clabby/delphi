@@ -11,14 +11,15 @@ contract EquationV2Test is DSTest {
     // -----------------------------
 
     function test_EncodeAndDecode() public {
-        uint256[] expressions = new uint256[](5);
+        uint256[] memory expressions = new uint256[](5);
         expressions[0] = 6;
         expressions[1] = 0;
         expressions[2] = 2;
         expressions[3] = 0;
-        expressions[4] = 2;
+        expressions[4] = 1e18;
 
         (uint256[] memory encoded, uint16[] memory slices) = EquationV2.encodeExpressions(expressions);
+        assertEq(encoded[0], 5708990770823839524233143877797980545530986496000000000000131078);
 
         uint256[] memory decoded = EquationV2.decodeExpressions(encoded, slices);
         assertEq(decoded[0], expressions[0]);
