@@ -40,7 +40,7 @@ contract DelphiFactoryV1 {
 
     constructor(address[] memory _aggregators) {
         // For ease of deployment, instantiate the contract with allowed aggregators
-        for (uint8 i = 0; i < _aggregators.length;) {
+        for (uint8 i; i < _aggregators.length;) {
             linkAggregators[_aggregators[i]] = true;
             emit AllowAggregator(_aggregators[i], true);
             unchecked { ++i; }
@@ -71,8 +71,8 @@ contract DelphiFactoryV1 {
         uint256[] calldata _expressions
     ) external returns (address deployed) {
         // Check that all oracles are whitelisted
-        for (uint8 i = 0; i < _aggregators.length;) {
-            require(linkAggregators[_aggregators[i]] == true, "Error: ORACLE_NOT_ALLOWED");
+        for (uint8 i; i < _aggregators.length;) {
+            require(linkAggregators[_aggregators[i]], "Error: ORACLE_NOT_ALLOWED");
             unchecked { ++i; }
         }
 
