@@ -115,7 +115,7 @@ library Equation {
     }
 
     /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256[] memory variables) public view returns (uint256) {
+    function calculate(uint256[] memory self, uint256[] memory variables) public view returns (uint256) {
         return solveMath(self, 0, variables);
     }
 
@@ -206,17 +206,16 @@ library Equation {
         return (lastNodeIdx, exprType);
     }
 
-    function solveMath(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
+    function solveMath(uint256[] memory self, uint8 nodeIdx, uint256[] memory variables)
     private view returns (uint256)
     {
-        Node storage node = self[nodeIdx];
-        uint8 opcode = node.opcode;
+        uint8 opcode = uint8(self[nodeIdx]);
         if (opcode == OPCODE_CONST) {
-            return node.value;
+            return self[nodeIdx + 1];
         } else if (opcode == OPCODE_VAR) {
-            return variables[node.value]; // for variables, set "value" to the index of the variable's value in uint256[] variables
+            return variables[self[nodeIdx + 1]]; // for variables, set "value" to the index of the variable's value in uint256[] variables
         } else if (opcode == OPCODE_SQRT) {
-            uint256 childValue = solveMath(self, node.child0, variables);
+            uint256 childValue = solveMath(self, nodeIdx + 1, variables);
             uint256 temp = childValue.add(1).div(2);
             uint256 result = childValue;
             while (temp < result) {
@@ -225,8 +224,8 @@ library Equation {
             }
             return result;
         } else if (opcode >= OPCODE_ADD && opcode <= OPCODE_PCT) {
-            uint256 leftValue = solveMath(self, node.child0, variables);
-            uint256 rightValue = solveMath(self, node.child1, variables);
+            uint256 leftValue = solveMath(self, nodeIdx + 1, variables);
+            uint256 rightValue = solveMath(self, nodeIdx + 2, variables);
             if (opcode == OPCODE_ADD) {
                 return leftValue.add(rightValue);
             } else if (opcode == OPCODE_SUB) {
@@ -238,27 +237,28 @@ library Equation {
             } else if (opcode == OPCODE_EXP) {
                 uint256 power = rightValue;
                 uint256 expResult = 1;
-                for (uint256 idx = 0; idx < power; ++idx) {
+                for (uint256 idx; idx < power;) {
                     expResult = expResult.mul(leftValue);
+                    unchecked { ++idx; }
                 }
                 return expResult;
             } else if (opcode == OPCODE_PCT) {
                 return leftValue.mul(rightValue).div(1e18);
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, variables);
-            if (condValue) return solveMath(self, node.child1, variables);
-            else return solveMath(self, node.child2, variables);
+            bool condValue = solveBool(self, nodeIdx + 1, variables);
+            if (condValue) return solveMath(self, nodeIdx + 2, variables);
+            else return solveMath(self, nodeIdx + 3, variables);
         } else if (opcode == OPCODE_BANCOR_LOG) {
-            uint256 multiplier = solveMath(self, node.child0, variables);
-            uint256 baseN = solveMath(self, node.child1, variables);
-            uint256 baseD = solveMath(self, node.child2, variables);
+            uint256 multiplier = solveMath(self, nodeIdx + 1, variables);
+            uint256 baseN = solveMath(self, nodeIdx + 2, variables);
+            uint256 baseD = solveMath(self, nodeIdx + 3, variables);
             return BancorPower.log(multiplier, baseN, baseD);
         } else if (opcode == OPCODE_BANCOR_POWER) {
-            uint256 multiplier = solveMath(self, node.child0, variables);
-            uint256 baseN = solveMath(self, node.child1, variables);
-            uint256 baseD = solveMath(self, node.child2, variables);
-            uint256 expV = solveMath(self, node.child3, variables);
+            uint256 multiplier = solveMath(self, nodeIdx + 1, variables);
+            uint256 baseN = solveMath(self, nodeIdx + 2, variables);
+            uint256 baseD = solveMath(self, nodeIdx + 3, variables);
+            uint256 expV = solveMath(self, nodeIdx + 4, variables);
             require(expV < 1 << 32);
             (uint256 expResult, uint8 precision) = BancorPower.power(baseN, baseD, uint32(expV), 1e6);
             return expResult.mul(multiplier) >> precision;
@@ -266,16 +266,15 @@ library Equation {
         revert();
     }
 
-    function solveBool(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
+    function solveBool(uint256[] memory self, uint8 nodeIdx, uint256[] memory variables)
     private view returns (bool)
     {
-        Node storage node = self[nodeIdx];
-        uint8 opcode = node.opcode;
+        uint8 opcode = uint8(self[nodeIdx]);
         if (opcode == OPCODE_NOT) {
-            return !solveBool(self, node.child0, variables);
+            return !solveBool(self, nodeIdx + 1, variables);
         } else if (opcode >= OPCODE_EQ && opcode <= OPCODE_GE) {
-            uint256 leftValue = solveMath(self, node.child0, variables);
-            uint256 rightValue = solveMath(self, node.child1, variables);
+            uint256 leftValue = solveMath(self, nodeIdx + 1, variables);
+            uint256 rightValue = solveMath(self, nodeIdx + 2, variables);
             if (opcode == OPCODE_EQ) {
                 return leftValue == rightValue;
             } else if (opcode == OPCODE_NE) {
@@ -290,19 +289,74 @@ library Equation {
                 return leftValue >= rightValue;
             }
         } else if (opcode >= OPCODE_AND && opcode <= OPCODE_OR) {
-            bool leftBoolValue = solveBool(self, node.child0, variables);
+            bool leftBoolValue = solveBool(self, nodeIdx + 1, variables);
             if (opcode == OPCODE_AND) {
-                if (leftBoolValue) return solveBool(self, node.child1, variables);
+                if (leftBoolValue) return solveBool(self, nodeIdx + 2, variables);
                 else return false;
             } else if (opcode == OPCODE_OR) {
                 if (leftBoolValue) return true;
-                else return solveBool(self, node.child1, variables);
+                else return solveBool(self, nodeIdx + 2, variables);
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, variables);
-            if (condValue) return solveBool(self, node.child1, variables);
-            else return solveBool(self, node.child2, variables);
+            bool condValue = solveBool(self, nodeIdx + 1, variables);
+            if (condValue) return solveBool(self, nodeIdx + 2, variables);
+            else return solveBool(self, nodeIdx + 3, variables);
         }
         revert();
+    }
+
+    function encodeExpressions(uint256[] memory _expressions) public view returns (
+        uint256[] memory encoded,
+        uint16[] memory slices
+    ) {
+        encoded = new uint256[](1);
+        slices = new uint16[](_expressions.length);
+
+        encoded[0] |= _expressions[0];
+
+        uint256 expr;
+        uint8 idx;
+        uint16 shiftAmount;
+        for (uint8 i = 1; i < _expressions.length;) {
+            expr = _expressions[i];
+            shiftAmount += expr > 255 ? 128 : 8; // If the number will overflow a uint8, set its slot to a uint128
+
+            // If we're about to overflow the uint256, add another one to the array
+            if (shiftAmount > 256) {
+                shiftAmount = 0;
+            unchecked { ++idx; }
+            }
+
+            encoded[idx] |= expr << shiftAmount;
+            slices[i] = shiftAmount;
+        unchecked { ++i; }
+        }
+    }
+
+    function decodeExpressions(
+        uint256[] memory _encoded,
+        uint16[] memory slices
+    ) public view returns (uint256[] memory expressions) {
+        expressions = new uint256[](slices.length);
+        uint8 idx;
+
+        expressions[0] = uint8(_encoded[0]); // The first expression will always be in the first 8 bits of the encoded expression
+
+        uint16 a;
+        uint16 b;
+
+        for (uint8 i = 1; i < slices.length; i++) {
+            a = slices[i];
+            b = slices[i - 1];
+            if (a < b) {
+                unchecked { ++idx; }
+            }
+
+            expressions[i] = uint256(
+                a - b == 128
+                ? uint128(_encoded[idx] >> slices[i])
+                : uint8(_encoded[idx] >> slices[i])
+            );
+        }
     }
 }
