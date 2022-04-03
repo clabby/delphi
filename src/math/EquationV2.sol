@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 
 import "./SafeMath.sol";
 import "./BancorPower.sol";
+import "solmate/utils/FixedPointMathLib.sol";
 
 /**
  * Modified version of Band Protocol's Equation.sol
@@ -87,9 +88,7 @@ library EquationV2 {
 
     /// Return the number of children the given opcode node has.
     function getChildrenCount(uint8 opcode) private pure returns (uint8) {
-        if (opcode <= OPCODE_VAR) {
-            return 0;
-        } else if (opcode <= OPCODE_NOT) {
+        if (opcode <= OPCODE_NOT) {
             return 1;
         } else if (opcode <= OPCODE_OR) {
             return 2;
@@ -145,28 +144,31 @@ library EquationV2 {
         revert();
     }
 
-    /*function findOrder(
+    function _getChildren(
         uint256[] memory self,
-        uint256[] memory order,
-        uint8 currentNodeIndex
-    ) private returns (uint8, ExprType) {
-        require(currentNodeIndex < self.length);
-        uint256 node = self[currentNodeIndex];
-        uint8 opcode = node.opcode;
+        uint8 opcodeIndex
+    ) private view returns (uint8, ExprType, uint8[] memory) {
+        require(opcodeIndex < self.length);
+
+        uint8 opcode = uint8(self[opcodeIndex]);
         uint8 childrenCount = getChildrenCount(opcode);
         ExprType[] memory childrenTypes = new ExprType[](childrenCount);
-        uint8 lastNodeIdx = currentNodeIndex;
-        for (uint8 idx = 0; idx < childrenCount; ++idx) {
-            if (idx == 0) node.child0 = lastNodeIdx + 1;
-            else if (idx == 1) node.child1 = lastNodeIdx + 1;
-            else if (idx == 2) node.child2 = lastNodeIdx + 1;
-            else if (idx == 3) node.child3 = lastNodeIdx + 1;
-            else revert();
-            (lastNodeIdx, childrenTypes[idx]) = populateTree(self, lastNodeIdx + 1);
+
+        uint8 lastOpcodeIdx = opcodeIndex;
+        uint8[] memory childrenIndexes = new uint8[](childrenCount);
+
+        if (opcode <= OPCODE_VAR) {
+            unchecked { ++lastOpcodeIdx; }
+            childrenIndexes[0] = lastOpcodeIdx;
+        } else {
+            for (uint8 idx; idx < childrenCount; ++idx) {
+                childrenIndexes[idx] = lastOpcodeIdx + 1;
+                (lastOpcodeIdx, childrenTypes[idx],) = _getChildren(self, lastOpcodeIdx + 1);
+            }
         }
         ExprType exprType = checkExprType(opcode, childrenTypes);
-        return (lastNodeIdx, exprType);
-    }*/
+        return (lastOpcodeIdx, exprType, childrenIndexes);
+    }
 
     function solveMath(
         uint256[] memory self,
@@ -174,22 +176,18 @@ library EquationV2 {
         uint256[] memory variables
     ) private view returns (uint256) {
         uint8 opcode = uint8(self[nodeIdx]);
+        (,,uint8[] memory childIndexes) = _getChildren(self, nodeIdx);
+
         if (opcode == OPCODE_CONST) {
             return self[nodeIdx + 1];
         } else if (opcode == OPCODE_VAR) {
             return variables[self[nodeIdx + 1]]; // for variables, set "value" to the index of the variable's value in uint256[] variables
         } else if (opcode == OPCODE_SQRT) {
-            uint256 childValue = solveMath(self, nodeIdx + 1, variables);
-            uint256 temp = childValue.add(1).div(2);
-            uint256 result = childValue;
-            while (temp < result) {
-                result = temp;
-                temp = childValue.div(temp).add(temp).div(2);
-            }
-            return result;
+            uint256 childValue = solveMath(self, childIndexes[0], variables);
+            return FixedPointMathLib.sqrt(childValue); // Use solmate's sqrt function
         } else if (opcode >= OPCODE_ADD && opcode <= OPCODE_PCT) {
-            uint256 leftValue = solveMath(self, nodeIdx + 1, variables);
-            uint256 rightValue = solveMath(self, nodeIdx + 2, variables);
+            uint256 leftValue = solveMath(self, childIndexes[0], variables);
+            uint256 rightValue = solveMath(self, childIndexes[1], variables);
             if (opcode == OPCODE_ADD) {
                 return leftValue.add(rightValue);
             } else if (opcode == OPCODE_SUB) {
@@ -207,22 +205,22 @@ library EquationV2 {
                 }
                 return expResult;
             } else if (opcode == OPCODE_PCT) {
-                return leftValue.mul(rightValue).div(1e18);
+                return FixedPointMathLib.mulDivDown(leftValue, rightValue, 1 ether); // Use solmate's divMulDown function
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, nodeIdx + 1, variables);
-            if (condValue) return solveMath(self, nodeIdx + 2, variables);
-            else return solveMath(self, nodeIdx + 3, variables);
+            bool condValue = solveBool(self, childIndexes[0], variables);
+            if (condValue) return solveMath(self, childIndexes[1], variables);
+            else return solveMath(self, childIndexes[2], variables);
         } else if (opcode == OPCODE_BANCOR_LOG) {
-            uint256 multiplier = solveMath(self, nodeIdx + 1, variables);
-            uint256 baseN = solveMath(self, nodeIdx + 2, variables);
-            uint256 baseD = solveMath(self, nodeIdx + 3, variables);
+            uint256 multiplier = solveMath(self, childIndexes[0], variables);
+            uint256 baseN = solveMath(self, childIndexes[1], variables);
+            uint256 baseD = solveMath(self, childIndexes[2], variables);
             return BancorPower.log(multiplier, baseN, baseD);
         } else if (opcode == OPCODE_BANCOR_POWER) {
-            uint256 multiplier = solveMath(self, nodeIdx + 1, variables);
-            uint256 baseN = solveMath(self, nodeIdx + 2, variables);
-            uint256 baseD = solveMath(self, nodeIdx + 3, variables);
-            uint256 expV = solveMath(self, nodeIdx + 4, variables);
+            uint256 multiplier = solveMath(self, childIndexes[0], variables);
+            uint256 baseN = solveMath(self, childIndexes[1], variables);
+            uint256 baseD = solveMath(self, childIndexes[2], variables);
+            uint256 expV = solveMath(self, childIndexes[3], variables);
             require(expV < 1 << 32);
             (uint256 expResult, uint8 precision) = BancorPower.power(baseN, baseD, uint32(expV), 1e6);
             return expResult.mul(multiplier) >> precision;
@@ -271,65 +269,80 @@ library EquationV2 {
 
     // TODO: Convert these functions to Yul
 
-    function encodeExpressions(uint256[] memory _expressions) public view returns (
-        uint256[] memory encoded,
-        uint16[] memory slices
-    ) {
-        encoded = new uint256[](5); // TODO: Determine a max uint256 pack
-        slices = new uint16[](_expressions.length);
-
-        encoded[0] |= _expressions[0];
+    function packExpression(
+        uint256[] memory _expressions,
+        uint256[] storage encoded,
+        uint8[] storage slices
+    ) public {
+        // The first expression should always be a single digit opcode, so we can
+        // shift it into the first 8 bits of the encoded expression.
+        encoded.push(_expressions[0]);
+        slices.push(0);
 
         uint256 expr;
         uint8 idx;
-        uint16 curShift;
+        uint8 curShift;
         for (uint8 i = 1; i < _expressions.length;) {
             expr = _expressions[i];
-            curShift += expr > 255 ? 128 : 8; // If the number will overflow a uint8, set its slot to a uint128
 
-            // If we're about to overflow the current uint256, begin packing into another one
-            if (curShift > 0x100) {
-                curShift = 0;
+            // We only pack single digit opcodes here. This is so that constant variables can take advantage of
+            // the full domain of uint256
+            if (expr > 0xFF) {
+                unchecked { idx += 2; } // We increase by 2 regardless of if this is the last expression here. If we don't end up moving to the next uint256, it will still be allocated in memory anyways.
+
+                encoded.push(expr);
+                encoded.push(0);
+
+                slices.push(0xFF); // 0xFF slice (impossible on the uint8 packed slices) marks a full uint256 value
+                curShift = 0; // Set the current shift to zero for the next uint
+            }
+            // If the next 8 bit value will overflow the uint256, move on to the next one
+            else if (curShift == 0xF7) {
+                // Start off the next uint256
                 unchecked { ++idx; }
+                encoded.push(0);
+
+                curShift = 0; // Set the current shift to zero for the next uint
+                slices.push(curShift); // Set the slice of the next uint's first value to 0
+                encoded[idx] |= expr; // Encode the next uint with the expression's value. It will always be 8 bits in this scenario due to the check above.
+            }
+            // If the uint8 opcode can fit in the current uint256, shift it in
+            else {
+                unchecked { curShift += 8; } // We know that this won't overflow because of the check above
+                slices.push(curShift);
+                encoded[idx] |= expr << curShift;
             }
 
-            encoded[idx] |= expr << curShift;
-            slices[i] = curShift;
             unchecked { ++i; }
         }
     }
 
-    function decodeExpressions(
-        uint256[] memory _encoded,
-        uint16[] memory slices
+    function unpackExpression(
+        uint256[] storage _encoded,
+        uint8[] storage slices
     ) public view returns (uint256[] memory expressions) {
         expressions = new uint256[](slices.length);
-        // The first expression of a valid equation will always be an opcode in the first 8 bits
+        // The first expression of a valid equation will always be an opcode
         expressions[0] = uint8(_encoded[0]);
 
         uint8 idx;
-        uint16 a;
-        uint16 b;
+        uint8 s;
         for (uint8 i = 1; i < slices.length;) {
-            a = slices[i];
-            b = slices[i - 1];
+            s = slices[i];
 
-            // If we're still in the same uint256, check the difference between the slices to determine slice length
-            if (a > b) {
-                expressions[i] = uint256(
-                    a - b == 128
-                    ? uint128(_encoded[idx] >> a)
-                    : uint8(_encoded[idx] >> a)
-                );
+            // 0xFF marks a full uint256 value
+            if (s == 0xFF) {
+                unchecked { idx += 2; }
+                expressions[i] = _encoded[idx - 1];
             }
-            // Otherwise, move on to the next uint256
-            else {
+            // If s = 0, we're on a new uint256
+            else if (s == 0) {
                 unchecked { ++idx; }
-                expressions[i] = uint256(
-                    a == 128 // TODO: This is bugged. The first slice of a uint256 will always start at 0, need to determine whether it is 8 or 128 bits long.
-                    ? uint128(_encoded[idx] >> a)
-                    : uint8(_encoded[idx] >> a)
-                );
+                expressions[i] = uint8(_encoded[idx]);
+            }
+            // Otherwise, keep shifting the current one
+            else {
+                expressions[i] = uint8(_encoded[idx] >> s);
             }
 
             unchecked { ++i; }

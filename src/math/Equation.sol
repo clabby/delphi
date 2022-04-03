@@ -103,9 +103,7 @@ library Equation {
             /// Get the node's value. Applicable for OPCODE_CONST and OPCODE_VAR
             /// For OPCODE_CONST, the value is the constant itself
             /// For OPCODE_VAR, the value is the index of the variable inside of the passed "variables" array
-            if (opcode == OPCODE_CONST) {
-                node.value = _expressions[++idx];
-            } else if (opcode == OPCODE_VAR) {
+            if (opcode == OPCODE_CONST || opcode == OPCODE_VAR) {
                 node.value = _expressions[++idx];
             }
             self.push(node);
