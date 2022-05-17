@@ -3,9 +3,8 @@
 First of all, thanks for your interest in contributing! :yellow_heart:
 
 ## Get set up
-1. Clone the repo: `git clone git@github.com:baofinance/delphi.git`
-2. Install [Foundry](https://github.com/gakonst/foundry)* or [DappTools](https://github.com/dapphub/dapptools) if you haven't already. 
-   1. \* Recommended
+1. Clone the repo: `git clone git@github.com:clabby/delphi.git`
+2. Install [Foundry](https://github.com/gakonst/foundry) if you haven't already.
 3. Create a branch `git checkout -b my-new-delphi-feature`
 
 ## Testing

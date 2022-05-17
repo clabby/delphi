@@ -1,4 +1,4 @@
-# Delphi :crystal_ball::last_quarter_moon_with_face: ![Test Workflow](https://github.com/baofinance/delphi/actions/workflows/forgetests.yml/badge.svg) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+# Delphi :crystal_ball::last_quarter_moon_with_face: ![Test Workflow](https://github.com/clabby/delphi/actions/workflows/forgetests.yml/badge.svg) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 Delphi is a set of contracts that allows anyone to permissionlessly create
 oracles which perform an arbitrary mathematical operation on data from
