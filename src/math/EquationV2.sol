@@ -3,6 +3,7 @@ pragma solidity ^0.8.14;
 
 import "./SafeMath.sol";
 import "./BancorPower.sol";
+import "solmate/utils/FixedPointMathLib.sol";
 
 /**
  * Modified version of Band Protocol's Equation.sol
@@ -10,7 +11,7 @@ import "./BancorPower.sol";
  * https://github.com/bandprotocol/contracts/blob/master/contracts/utils/Equation.sol
  * Licensed under Apache License, Version 2.0.
  */
-library Equation {
+library EquationV2 {
     using SafeMath for uint256;
 
     /// An expression tree is encoded as a set of nodes, with root node having index zero. Each node has 3 values:
@@ -54,14 +55,6 @@ library Equation {
     /// (***) Using BancorFomula, the opcode computes exponential of fractional numbers. The opcode takes 4 children
     ///     (c,baseN,baseD,expV), and computes (c * ((baseN / baseD) ^ (expV / 1e6))). See implementation for the
     ///     limitation of the each value's domain. The end result must be in uint256 range.
-    struct Node {
-        uint8 opcode;
-        uint8 child0;
-        uint8 child1;
-        uint8 child2;
-        uint8 child3;
-        uint256 value;
-    }
 
     enum ExprType { Invalid, Math, Boolean }
 
@@ -88,40 +81,14 @@ library Equation {
     uint8 constant OPCODE_BANCOR_POWER = 20;
     uint8 constant OPCODE_INVALID = 21;
 
-    /// @dev Initialize equation by array of opcodes/values in prefix order. Array
-    /// is read as if it is the *pre-order* traversal of the expression tree.
-    function init(Node[] storage self, uint256[] calldata _expressions) public {
-        /// Init should only be called when the equation is not yet initialized.
-        require(self.length == 0);
-        /// Limit expression length to < 256 to make sure gas cost is managable.
-        require(_expressions.length < 256);
-        for (uint8 idx = 0; idx < _expressions.length; ++idx) {
-            uint256 opcode = _expressions[idx];
-            require(opcode < OPCODE_INVALID);
-            Node memory node;
-            node.opcode = uint8(opcode);
-            /// Get the node's value. Applicable for OPCODE_CONST and OPCODE_VAR
-            /// For OPCODE_CONST, the value is the constant itself
-            /// For OPCODE_VAR, the value is the index of the variable inside of the passed "variables" array
-            if (opcode == OPCODE_CONST || opcode == OPCODE_VAR) {
-                node.value = _expressions[++idx];
-            }
-            self.push(node);
-        }
-        (uint8 lastNodeIndex,) = populateTree(self, 0);
-        require(lastNodeIndex == self.length - 1);
-    }
-
     /// Calculate the Y position from the X position for this equation.
-    function calculate(Node[] storage self, uint256[] memory variables) public view returns (uint256) {
+    function calculate(uint256[] memory self, uint256[] memory variables) public view returns (uint256) {
         return solveMath(self, 0, variables);
     }
 
     /// Return the number of children the given opcode node has.
     function getChildrenCount(uint8 opcode) private pure returns (uint8) {
-        if (opcode <= OPCODE_VAR) {
-            return 0;
-        } else if (opcode <= OPCODE_NOT) {
+        if (opcode <= OPCODE_NOT) {
             return 1;
         } else if (opcode <= OPCODE_OR) {
             return 2;
@@ -177,54 +144,50 @@ library Equation {
         revert();
     }
 
-    /// Helper function to recursively populate node information following the given pre-order
-    /// node list. It inspects the opcode and recursively call populateTree(s) accordingly.
-    /// @param self storage pointer to equation data to build tree.
-    /// @param currentNodeIndex the index of the current node to populate infoMap.
-    /// @return An (uint8, bool). The first value represents the last  (highest/rightmost) node
-    /// index of the current subtree. The second value indicates the type of this subtree.
-    function populateTree(Node[] storage self, uint8 currentNodeIndex)
-    private returns (uint8, ExprType)
-    {
-        require(currentNodeIndex < self.length);
-        Node storage node = self[currentNodeIndex];
-        uint8 opcode = node.opcode;
+    function _getChildren(
+        uint256[] memory self,
+        uint8 opcodeIndex
+    ) private view returns (uint8, ExprType, uint8[] memory) {
+        require(opcodeIndex < self.length);
+
+        uint8 opcode = uint8(self[opcodeIndex]);
         uint8 childrenCount = getChildrenCount(opcode);
         ExprType[] memory childrenTypes = new ExprType[](childrenCount);
-        uint8 lastNodeIdx = currentNodeIndex;
-        for (uint8 idx = 0; idx < childrenCount; ++idx) {
-            if (idx == 0) node.child0 = lastNodeIdx + 1;
-            else if (idx == 1) node.child1 = lastNodeIdx + 1;
-            else if (idx == 2) node.child2 = lastNodeIdx + 1;
-            else if (idx == 3) node.child3 = lastNodeIdx + 1;
-            else revert();
-            (lastNodeIdx, childrenTypes[idx]) = populateTree(self, lastNodeIdx + 1);
+
+        uint8 lastOpcodeIdx = opcodeIndex;
+        uint8[] memory childrenIndexes = new uint8[](childrenCount);
+
+        if (opcode <= OPCODE_VAR) {
+            unchecked { ++lastOpcodeIdx; }
+            childrenIndexes[0] = lastOpcodeIdx;
+        } else {
+            for (uint8 idx; idx < childrenCount; ++idx) {
+                childrenIndexes[idx] = lastOpcodeIdx + 1;
+                (lastOpcodeIdx, childrenTypes[idx],) = _getChildren(self, lastOpcodeIdx + 1);
+            }
         }
         ExprType exprType = checkExprType(opcode, childrenTypes);
-        return (lastNodeIdx, exprType);
+        return (lastOpcodeIdx, exprType, childrenIndexes);
     }
 
-    function solveMath(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
-    private view returns (uint256)
-    {
-        Node storage node = self[nodeIdx];
-        uint8 opcode = node.opcode;
+    function solveMath(
+        uint256[] memory self,
+        uint8 nodeIdx,
+        uint256[] memory variables
+    ) private view returns (uint256) {
+        uint8 opcode = uint8(self[nodeIdx]);
+        (,,uint8[] memory childIndexes) = _getChildren(self, nodeIdx);
+
         if (opcode == OPCODE_CONST) {
-            return node.value;
+            return self[nodeIdx + 1];
         } else if (opcode == OPCODE_VAR) {
-            return variables[node.value]; // for variables, set "value" to the index of the variable's value in uint256[] variables
+            return variables[self[nodeIdx + 1]]; // for variables, set "value" to the index of the variable's value in uint256[] variables
         } else if (opcode == OPCODE_SQRT) {
-            uint256 childValue = solveMath(self, node.child0, variables);
-            uint256 temp = childValue.add(1).div(2);
-            uint256 result = childValue;
-            while (temp < result) {
-                result = temp;
-                temp = childValue.div(temp).add(temp).div(2);
-            }
-            return result;
+            uint256 childValue = solveMath(self, childIndexes[0], variables);
+            return FixedPointMathLib.sqrt(childValue); // Use solmate's sqrt function
         } else if (opcode >= OPCODE_ADD && opcode <= OPCODE_PCT) {
-            uint256 leftValue = solveMath(self, node.child0, variables);
-            uint256 rightValue = solveMath(self, node.child1, variables);
+            uint256 leftValue = solveMath(self, childIndexes[0], variables);
+            uint256 rightValue = solveMath(self, childIndexes[1], variables);
             if (opcode == OPCODE_ADD) {
                 return leftValue.add(rightValue);
             } else if (opcode == OPCODE_SUB) {
@@ -236,27 +199,28 @@ library Equation {
             } else if (opcode == OPCODE_EXP) {
                 uint256 power = rightValue;
                 uint256 expResult = 1;
-                for (uint256 idx = 0; idx < power; ++idx) {
+                for (uint256 idx; idx < power;) {
                     expResult = expResult.mul(leftValue);
+                    unchecked { ++idx; }
                 }
                 return expResult;
             } else if (opcode == OPCODE_PCT) {
-                return leftValue.mul(rightValue).div(1e18);
+                return FixedPointMathLib.mulDivDown(leftValue, rightValue, 1 ether); // Use solmate's divMulDown function
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, variables);
-            if (condValue) return solveMath(self, node.child1, variables);
-            else return solveMath(self, node.child2, variables);
+            bool condValue = solveBool(self, childIndexes[0], variables);
+            if (condValue) return solveMath(self, childIndexes[1], variables);
+            else return solveMath(self, childIndexes[2], variables);
         } else if (opcode == OPCODE_BANCOR_LOG) {
-            uint256 multiplier = solveMath(self, node.child0, variables);
-            uint256 baseN = solveMath(self, node.child1, variables);
-            uint256 baseD = solveMath(self, node.child2, variables);
+            uint256 multiplier = solveMath(self, childIndexes[0], variables);
+            uint256 baseN = solveMath(self, childIndexes[1], variables);
+            uint256 baseD = solveMath(self, childIndexes[2], variables);
             return BancorPower.log(multiplier, baseN, baseD);
         } else if (opcode == OPCODE_BANCOR_POWER) {
-            uint256 multiplier = solveMath(self, node.child0, variables);
-            uint256 baseN = solveMath(self, node.child1, variables);
-            uint256 baseD = solveMath(self, node.child2, variables);
-            uint256 expV = solveMath(self, node.child3, variables);
+            uint256 multiplier = solveMath(self, childIndexes[0], variables);
+            uint256 baseN = solveMath(self, childIndexes[1], variables);
+            uint256 baseD = solveMath(self, childIndexes[2], variables);
+            uint256 expV = solveMath(self, childIndexes[3], variables);
             require(expV < 1 << 32);
             (uint256 expResult, uint8 precision) = BancorPower.power(baseN, baseD, uint32(expV), 1e6);
             return expResult.mul(multiplier) >> precision;
@@ -264,16 +228,15 @@ library Equation {
         revert();
     }
 
-    function solveBool(Node[] storage self, uint8 nodeIdx, uint256[] memory variables)
+    function solveBool(uint256[] memory self, uint8 nodeIdx, uint256[] memory variables)
     private view returns (bool)
     {
-        Node storage node = self[nodeIdx];
-        uint8 opcode = node.opcode;
+        uint8 opcode = uint8(self[nodeIdx]);
         if (opcode == OPCODE_NOT) {
-            return !solveBool(self, node.child0, variables);
+            return !solveBool(self, nodeIdx + 1, variables);
         } else if (opcode >= OPCODE_EQ && opcode <= OPCODE_GE) {
-            uint256 leftValue = solveMath(self, node.child0, variables);
-            uint256 rightValue = solveMath(self, node.child1, variables);
+            uint256 leftValue = solveMath(self, nodeIdx + 1, variables);
+            uint256 rightValue = solveMath(self, nodeIdx + 2, variables);
             if (opcode == OPCODE_EQ) {
                 return leftValue == rightValue;
             } else if (opcode == OPCODE_NE) {
@@ -288,19 +251,101 @@ library Equation {
                 return leftValue >= rightValue;
             }
         } else if (opcode >= OPCODE_AND && opcode <= OPCODE_OR) {
-            bool leftBoolValue = solveBool(self, node.child0, variables);
+            bool leftBoolValue = solveBool(self, nodeIdx + 1, variables);
             if (opcode == OPCODE_AND) {
-                if (leftBoolValue) return solveBool(self, node.child1, variables);
+                if (leftBoolValue) return solveBool(self, nodeIdx + 2, variables);
                 else return false;
             } else if (opcode == OPCODE_OR) {
                 if (leftBoolValue) return true;
-                else return solveBool(self, node.child1, variables);
+                else return solveBool(self, nodeIdx + 2, variables);
             }
         } else if (opcode == OPCODE_IF) {
-            bool condValue = solveBool(self, node.child0, variables);
-            if (condValue) return solveBool(self, node.child1, variables);
-            else return solveBool(self, node.child2, variables);
+            bool condValue = solveBool(self, nodeIdx + 1, variables);
+            if (condValue) return solveBool(self, nodeIdx + 2, variables);
+            else return solveBool(self, nodeIdx + 3, variables);
         }
         revert();
+    }
+
+    // TODO: Convert these functions to Yul
+
+    function packExpression(
+        uint256[] memory _expressions,
+        uint256[] storage encoded,
+        uint8[] storage slices
+    ) public {
+        // The first expression should always be a single digit opcode, so we can
+        // shift it into the first 8 bits of the encoded expression.
+        encoded.push(_expressions[0]);
+        slices.push(0);
+
+        uint256 expr;
+        uint8 idx;
+        uint8 curShift;
+        for (uint8 i = 1; i < _expressions.length;) {
+            expr = _expressions[i];
+
+            // We only pack single digit opcodes here. This is so that constant variables can take advantage of
+            // the full domain of uint256
+            if (expr > 0xFF) {
+                unchecked { idx += 2; } // We increase by 2 regardless of if this is the last expression here. If we don't end up moving to the next uint256, it will still be allocated in memory anyways.
+
+                encoded.push(expr);
+                encoded.push(0);
+
+                slices.push(0xFF); // 0xFF slice (impossible on the uint8 packed slices) marks a full uint256 value
+                curShift = 0; // Set the current shift to zero for the next uint
+            }
+            // If the next 8 bit value will overflow the uint256, move on to the next one
+            else if (curShift == 0xF7) {
+                // Start off the next uint256
+                unchecked { ++idx; }
+                encoded.push(0);
+
+                curShift = 0; // Set the current shift to zero for the next uint
+                slices.push(curShift); // Set the slice of the next uint's first value to 0
+                encoded[idx] |= expr; // Encode the next uint with the expression's value. It will always be 8 bits in this scenario due to the check above.
+            }
+            // If the uint8 opcode can fit in the current uint256, shift it in
+            else {
+                unchecked { curShift += 8; } // We know that this won't overflow because of the check above
+                slices.push(curShift);
+                encoded[idx] |= expr << curShift;
+            }
+
+            unchecked { ++i; }
+        }
+    }
+
+    function unpackExpression(
+        uint256[] storage _encoded,
+        uint8[] storage slices
+    ) public view returns (uint256[] memory expressions) {
+        expressions = new uint256[](slices.length);
+        // The first expression of a valid equation will always be an opcode
+        expressions[0] = uint8(_encoded[0]);
+
+        uint8 idx;
+        uint8 s;
+        for (uint8 i = 1; i < slices.length;) {
+            s = slices[i];
+
+            // 0xFF marks a full uint256 value
+            if (s == 0xFF) {
+                unchecked { idx += 2; }
+                expressions[i] = _encoded[idx - 1];
+            }
+            // If s = 0, we're on a new uint256
+            else if (s == 0) {
+                unchecked { ++idx; }
+                expressions[i] = uint8(_encoded[idx]);
+            }
+            // Otherwise, keep shifting the current one
+            else {
+                expressions[i] = uint8(_encoded[idx] >> s);
+            }
+
+            unchecked { ++i; }
+        }
     }
 }

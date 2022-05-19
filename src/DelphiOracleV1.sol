@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.14;
 
 import "@chainlink/interfaces/AggregatorV2V3Interface.sol";
 import "./math/Equation.sol";
@@ -38,13 +38,14 @@ contract DelphiOracleV1 {
         name = _name;
         factory = msg.sender;
 
-        for (uint8 i = 0; i < _aggregators.length;) {
+        for (uint8 i; i < _aggregators.length;) {
             aggregators.push(AggregatorV2V3Interface(_aggregators[i]));
             unchecked { ++i; }
         }
 
         // Set up equation for performOperation
         Equation.init(nodes, _expressions);
+
         initialized = true;
     }
 
@@ -53,7 +54,7 @@ contract DelphiOracleV1 {
      */
     function getLatestValue() public view returns (int256) {
         uint256[] memory variables = new uint256[](aggregators.length);
-        for (uint8 i = 0; i < aggregators.length;) {
+        for (uint8 i; i < aggregators.length;) {
             variables[i] = uint256(aggregators[i].latestAnswer()) * (10 ** (18 - aggregators[i].decimals())); // Scale all values to 1e18
             unchecked { ++i; }
         }

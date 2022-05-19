@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.14;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "../DelphiFactoryV1.sol";
 
-contract DelphiFactoryV1Test is DSTest {
+contract DelphiFactoryV1Test is Test {
     DelphiFactoryV1 factory;
     DelphiOracleV1 baseOracle;
 
@@ -13,7 +13,6 @@ contract DelphiFactoryV1Test is DSTest {
 
         // Create Factory
         factory = new DelphiFactoryV1(aggregators);
-        emit log_named_address("Factory", address(factory));
 
         // Check that all aggregators passed to constructor are allowed
         for (uint8 i = 0; i < aggregators.length; i++) {
@@ -30,7 +29,6 @@ contract DelphiFactoryV1Test is DSTest {
 
         // Deploy Oracle
         baseOracle = DelphiOracleV1(factory.createOracle("2xETH", aggregators, expressions));
-        emit log_named_address("Base Oracle (2xETH)", address(baseOracle));
     }
 
     // -----------------------------

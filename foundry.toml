@@ -1,0 +1,14 @@
+[default]
+src = 'src'
+test = 'test'
+out = 'out'
+libs = ['lib']
+cache = true
+cache_path = 'cache'
+no_storage_caching = false
+rpc_storage_caching = { chains = "all", endpoints = "remote" }
+fuzz_runs = 1024
+optimizer = true
+optimizer_runs = 20000
+chain_id = 1
+via_ir = true
