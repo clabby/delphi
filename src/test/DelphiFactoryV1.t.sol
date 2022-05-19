@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "../DelphiFactoryV1.sol";
 
-contract DelphiFactoryV1Test is DSTest {
+contract DelphiFactoryV1Test is Test {
     DelphiFactoryV1 factory;
     DelphiOracleV1 baseOracle;
 

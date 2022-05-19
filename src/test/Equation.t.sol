@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "../math/Equation.sol";
 
-contract EquationTest is DSTest {
+contract EquationTest is Test {
     Equation.Node[] public nodes;
     uint256[] public variables;
 
